@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi Manager • Pastel (Compat)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#f8fbff; --bg2:#fff7fb; --txt:#334155; --muted:#64748b;
+  --accent:#a78bfa; --accent2:#60a5fa; --accent3:#f472b6;
+  --ring:#c7d2fe; --shadow:0 10px 30px rgba(31,41,55,.10); --r:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;color:var(--txt);
+  font-family:"Sarabun","TH Sarabun New","TH SarabunPSK",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background: radial-gradient(1200px 600px at 10% 5%, var(--bg2), transparent),
+              radial-gradient(900px 500px at 90% 10%, #eef2ff, transparent),
+              linear-gradient(180deg, #fbfeff, #fff);
+}
+.wrap{max-width:940px;margin:28px auto 56px;padding:0 16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:var(--shadow);font-weight:700}
+h1{margin:0;font-size:24px}
+.sub{color:var(--muted);font-size:14px;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(255,255,255,.97));border:1px solid rgba(99,102,241,.12);
+  border-radius:var(--r);padding:16px;box-shadow:var(--shadow);backdrop-filter:saturate(140%) blur(6px)}
+.label{font-size:14px;color:var(--muted);margin-bottom:6px}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
+input,select{padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;outline:none;min-width:0}
+input:focus,select:focus{border-color:#c7d2fe;box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+button{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;cursor:pointer;
+  box-shadow:var(--shadow);font-weight:700}
+button:active{transform:translateY(1px)}
+button[disabled]{opacity:.6;cursor:not-allowed}
+.badge{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;color:#64748b;font-size:12px}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}
+table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:14px}
+td,th{padding:8px 10px;text-align:left;vertical-align:middle}
+hr{border:none;border-top:1px dashed #e5e7eb;margin:10px 0}
+/* password helpers */
+.pwdwrap{position:relative;display:flex;align-items:center;flex:1;min-width:180px}
+.pwdwrap input{width:100%;padding-right:42px}
+.eye{position:absolute;right:8px;background:transparent;border:0;cursor:pointer;font-size:16px;opacity:.75}
+.eye:active{transform:translateY(1px)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.note{font-size:12px;color:#94a3b8}
+.ok{color:#16a34a}.warn{color:#eab308}.err{color:#ef4444}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Wi-Fi</div>
+    <div>
+      <h1>Wi-Fi Manager</h1>
+      <div class="sub">สแกน • เลือกเครือข่าย • เชื่อมต่อ • บันทึกค่า — ธีมพาสเทล (TH Sarabun)</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="label">สถานะ</div>
+      <div id="status" class="row"><span class="badge">Loading...</span></div>
+      <div class="row">
+        <button id="btn-scan">Scan</button>
+        <button id="btn-refresh">Refresh</button>
+        <button id="btn-ap-on">AP ON</button>
+        <button id="btn-ap-off">AP OFF</button>
+      </div>
+      <div class="note">หากเชื่อมต่อสำเร็จแล้ว อาจต้องสลับกลับไปยัง Wi-Fi AP ปกติของเราเตอร์เพื่อเข้าถึงอุปกรณ์ผ่าน IP LAN</div>
+    </section>
+
+    <section class="card">
+      <div class="label">เชื่อมต่อเครือข่าย</div>
+      <div class="row">
+        <select id="ssid" title="เลือกเครือข่าย"></select>
+        <div class="pwdwrap">
+          <input id="psk" type="password" placeholder="Password (ถ้าจำเป็น)">
+          <button type="button" id="eye" class="eye" aria-label="แสดง/ซ่อนรหัสผ่าน">👁</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="toggle"><input id="showpsk" type="checkbox"> แสดงรหัสผ่าน</label>
+        <label class="toggle"><input id="auto-redirect" type="checkbox"> เปิดหน้า Dashboard อัตโนมัติเมื่อเชื่อมสำเร็จ</label>
+        <button id="btn-connect">Connect</button>
+      </div>
+      <div class="row"><small id="msg" class="note"></small></div>
+      <hr>
+      <div class="row">
+        <label class="toggle"><input id="prefer-saved" type="checkbox" checked> แสดง SSID ที่บันทึกไว้ก่อน</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="label">รายการที่บันทึก</div>
+      <table id="saved"><tbody></tbody></table>
+    </section>
+  </div>
+
+  <footer>Pastel UI • ไม่ใช้ไลบรารีภายนอก • ใช้งานกับ <code>/wifi/*</code> endpoints ของโมดูล</footer>
+</div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+function esc(s){return (s||"").replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
+async function api(path, opt){ const r=await fetch(path,opt); if(!r.ok) throw new Error(r.status); return r.json(); }
+
+let pollTimer = null;
+let savedList = [];
+
+function renderSaved(list){
+  const tb = $('saved').querySelector('tbody');
+  tb.innerHTML = list.length ? list.map(ssid=>`
+    <tr>
+      <td>${esc(ssid)}</td>
+      <td><button onclick="forget('${esc(ssid)}')">Forget</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="2">— none —</td></tr>';
+}
+
+async function loadStatus(){
+  const j = await api('/wifi/status');
+  const s = j.sta;
+  savedList = j.saved || [];
+  $('status').innerHTML = `
+    <span class="badge">STA: ${s.connected ? '<b class="ok">Connected</b>' : (s.connecting ? '<b class="warn">Connecting…</b>' : '<b>Disconnected</b>')}</span>
+    <span class="badge">IP: ${esc(s.ip||'-')}</span>
+    <span class="badge">SSID: ${esc((s.connected && s.ssid) || s.target || '-')}</span>
+    <span class="badge">AP: ${j.ap.active ? ('ON ('+esc(j.ap.ssid)+')') : 'OFF'}</span>
+  `;
+  renderSaved(savedList);
+
+  // auto redirect to dashboard if connected & opted-in
+  if (s.connected) {
+    $('btn-connect').disabled = false;
+    $('msg').textContent = 'Connected: ' + (s.ip||'-');
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if ($('auto-redirect').checked) {
+      setTimeout(()=>{ location.href = '/'; }, 800);
+    }
+  }
+}
+
+async function scan(){
+  $('ssid').innerHTML = '<option>กำลังสแกน...</option>';
+  const nets = await api('/wifi/scan');
+  // put saved SSIDs first (optional)
+  const preferSaved = $('prefer-saved').checked;
+  let items = nets;
+  if (preferSaved && savedList.length) {
+    var set = {}; savedList.forEach(function(x){ set[x]=true; });
+    const saved = nets.filter(function(n){ return set[n.ssid]; });
+    const others = nets.filter(function(n){ return !set[n.ssid]; });
+    items = saved.concat(others);
+  }
+  $('ssid').innerHTML = items.map(function(n){
+    return '<option value="'+esc(n.ssid)+'">'+esc(n.ssid)+' (ch'+n.ch+', '+n.rssi+'dBm)</option>';
+  }).join('') || '<option>ไม่พบสัญญาณ</option>';
+}
+
+// manual form-encode (compat)
+function formEncode(obj){
+  function enc(s){ return encodeURIComponent(String(s)).replace(/%20/g,'+'); }
+  var out = [];
+  for (var k in obj){ if(Object.prototype.hasOwnProperty.call(obj,k)){ out.push(enc(k)+'='+enc(obj[k])); } }
+  return out.join('&');
+}
+
+// connect flow: non-blocking begin + poll status
+async function connect(){
+  $('btn-connect').disabled = true;
+  $('msg').textContent = 'Starting connection...';
+  const body = formEncode({ssid:$('ssid').value, psk:$('psk').value});
+  try{
+    const r = await fetch('/wifi/connect', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: body
+    });
+    const j = await r.json();
+    if (j.ok) {
+      $('msg').textContent = 'Connecting to ' + ($('ssid').value || '');
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(loadStatus, 1000);
+    } else {
+      $('msg').textContent = 'Connect failed (request rejected)';
+      $('btn-connect').disabled = false;
+    }
+  }catch(e){
+    $('msg').textContent = 'Error: ' + e;
+    $('btn-connect').disabled = false;
+  }
+}
+
+async function forget(ssid){
+  await api('/wifi/forget?ssid='+encodeURIComponent(ssid));
+  loadStatus(); scan();
+}
+
+// password show/hide
+const psk = $('psk'), show = $('showpsk'), eye = $('eye');
+function setPskVisible(v){ psk.type = v ? 'text' : 'password'; show.checked = v; }
+show.onchange = function(){ setPskVisible(show.checked); };
+eye.onmousedown = function(){ setPskVisible(true); };
+eye.onmouseup   = function(){ setPskVisible(false); };
+eye.onmouseleave= function(){ setPskVisible(false); };
+eye.ontouchstart= function(e){ e.preventDefault(); setPskVisible(true); };
+eye.ontouchend  = function(){ setPskVisible(false); };
+
+// actions
+$('btn-scan').onclick = scan;
+$('btn-refresh').onclick = loadStatus;
+$('btn-connect').onclick = connect;
+$('btn-ap-on').onclick = function(){ api('/wifi/ap?on=1').then(loadStatus); };
+$('btn-ap-off').onclick = function(){ api('/wifi/ap?off=1').then(loadStatus); };
+
+loadStatus().then(scan);
+</script>
+</body>
+</html>

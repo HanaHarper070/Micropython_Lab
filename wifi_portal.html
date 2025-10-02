@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wi-Fi Manager • Pastel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#f8fbff; --bg2:#fff7fb; --txt:#334155; --muted:#64748b;
+  --accent:#a78bfa; --accent2:#60a5fa; --accent3:#f472b6;
+  --ring:#c7d2fe; --shadow:0 10px 30px rgba(31,41,55,.10); --r:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;color:var(--txt);
+  font-family:"Sarabun","TH Sarabun New","TH SarabunPSK",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background: radial-gradient(1200px 600px at 10% 5%, var(--bg2), transparent),
+              radial-gradient(900px 500px at 90% 10%, #eef2ff, transparent),
+              linear-gradient(180deg, #fbfeff, #fff);
+}
+.wrap{max-width:900px;margin:28px auto 56px;padding:0 16px}
+header{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:var(--shadow);font-weight:700}
+h1{margin:0;font-size:24px}
+.sub{color:var(--muted);font-size:14px;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:16px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.8),rgba(255,255,255,.95));border:1px solid rgba(99,102,241,.12);
+  border-radius:var(--r);padding:16px;box-shadow:var(--shadow);backdrop-filter:saturate(140%) blur(6px)}
+.label{font-size:14px;color:var(--muted);margin-bottom:6px}
+.row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
+input,select{padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;outline:none}
+input:focus{border-color:#c7d2fe;box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+button{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:10px 14px;cursor:pointer;
+  box-shadow:var(--shadow);font-weight:700}
+button:active{transform:translateY(1px)}
+table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:14px}
+td,th{padding:8px 10px;text-align:left}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;color:#64748b;font-size:12px}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:20px}
+
+/* ส่วนแสดง/ซ่อนรหัสผ่าน */
+.pwdwrap{position:relative;display:flex;align-items:center;flex:1}
+.pwdwrap input{width:100%;padding-right:42px}
+.eye{position:absolute;right:8px;background:transparent;border:0;cursor:pointer;font-size:16px;opacity:.7}
+.eye:active{transform:translateY(1px)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Wi-Fi</div>
+    <div>
+      <h1>Wi-Fi Manager</h1>
+      <div class="sub">สแกน • เลือกเครือข่าย • เชื่อมต่อ • บันทึกค่า</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="label">สถานะ</div>
+      <div id="status" class="row"><span class="badge">Loading...</span></div>
+      <div class="row">
+        <button id="btn-scan">Scan</button>
+        <button id="btn-refresh">Refresh</button>
+        <button id="btn-ap-on">AP ON</button>
+        <button id="btn-ap-off">AP OFF</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="label">เชื่อมต่อเครือข่าย</div>
+      <div class="row">
+        <select id="ssid"></select>
+        <div class="pwdwrap">
+          <input id="psk" type="password" placeholder="Password (ถ้าจำเป็น)">
+          <button type="button" id="eye" class="eye" aria-label="แสดง/ซ่อนรหัสผ่าน">👁</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="toggle"><input id="showpsk" type="checkbox"> แสดงรหัสผ่าน</label>
+        <button id="btn-connect">Connect</button>
+      </div>
+      <div class="row"><small id="msg" style="color:#64748b"></small></div>
+    </section>
+
+    <section class="card">
+      <div class="label">รายการที่บันทึก</div>
+      <table id="saved"><tbody></tbody></table>
+    </section>
+  </div>
+
+  <footer>ธีมพาสเทล • ฟอนต์ TH Sarabun • ไม่ใช้ไลบรารีภายนอก</footer>
+</div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+function esc(s){return (s||"").replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]))}
+async function api(path, opt){ const r=await fetch(path,opt); if(!r.ok) throw new Error(r.status); return r.json(); }
+
+async function loadStatus(){
+  const j = await api('/wifi/status');
+  const s = j.sta;
+  $('status').innerHTML = `
+    <span class="badge">STA: ${s.connected ? 'Connected' : 'Disconnected'}</span>
+    <span class="badge">IP: ${esc(s.ip||'-')}</span>
+    <span class="badge">SSID: ${esc(s.ssid||'-')}</span>
+    <span class="badge">AP: ${j.ap.active ? ('ON ('+esc(j.ap.ssid)+')') : 'OFF'}</span>
+  `;
+  // saved
+  const tb = $('saved').querySelector('tbody');
+  tb.innerHTML = (j.saved||[]).map(ssid=>`
+    <tr>
+      <td>${esc(ssid)}</td>
+      <td><button onclick="forget('${esc(ssid)}')">Forget</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="2">— none —</td></tr>';
+}
+
+async function scan(){
+  $('ssid').innerHTML = '<option>กำลังสแกน...</option>';
+  const nets = await api('/wifi/scan');
+  $('ssid').innerHTML = nets.map(n=>`<option value="${esc(n.ssid)}">${esc(n.ssid)} (ch${n.ch}, ${n.rssi}dBm)</option>`).join('') || '<option>ไม่พบสัญญาณ</option>';
+}
+
+async function connect(){
+  $('msg').textContent = 'Connecting...';
+  const body = new URLSearchParams({ssid:$('ssid').value, psk:$('psk').value});
+  const r = await fetch('/wifi/connect', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  const j = await r.json();
+  $('msg').textContent = j.ok ? ('Connected: '+(j.status.ip||'-')) : 'Connect failed';
+  loadStatus();
+}
+
+async function forget(ssid){
+  await api('/wifi/forget?ssid='+encodeURIComponent(ssid));
+  loadStatus();
+}
+
+// --- แสดง/ซ่อนรหัสผ่าน (สองโหมด: checkbox & กดค้างปุ่มตา) ---
+const psk = $('psk'), show = $('showpsk'), eye = $('eye');
+function setPskVisible(v){ psk.type = v ? 'text' : 'password'; show.checked = v; }
+show.onchange = () => setPskVisible(show.checked);
+// กดค้างเพื่อดู
+eye.onmousedown = ()=> setPskVisible(true);
+eye.onmouseup   = ()=> setPskVisible(false);
+eye.onmouseleave= ()=> setPskVisible(false);
+eye.ontouchstart= (e)=>{ e.preventDefault(); setPskVisible(true); };
+eye.ontouchend  = ()=> setPskVisible(false);
+
+$('btn-scan').onclick = scan;
+$('btn-refresh').onclick = loadStatus;
+$('btn-connect').onclick = connect;
+$('btn-ap-on').onclick = ()=>api('/wifi/ap?on=1').then(loadStatus);
+$('btn-ap-off').onclick = ()=>api('/wifi/ap?off=1').then(loadStatus);
+
+loadStatus(); scan();
+</script>
+</body>
+</html>

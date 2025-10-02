@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FM Farm Sensors Webserver DEMO</title>
+<style>
+:root{
+  --bg1:#f8fbff; --bg2:#fff7fb; --txt:#334155; --muted:#64748b;
+  --accent:#a78bfa; --accent2:#60a5fa; --accent3:#f472b6;
+  --ring:#c7d2fe; --shadow:0 10px 30px rgba(31,41,55,.08); --r:22px;
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%;color:var(--txt);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: radial-gradient(1200px 600px at 10% 5%, var(--bg2), transparent),
+              radial-gradient(900px 500px at 90% 10%, #eef2ff, transparent),
+              linear-gradient(180deg, #fbfeff, #fff);
+}
+.wrap{max-width:980px;margin:28px auto 56px;padding:0 16px}
+header{display:flex;align-items:center;justify-content:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--shadow)}
+h1{margin:0;font-size:24px}
+.subtitle{color:var(--muted);font-size:13px;text-align:center;margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:18px}
+.card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.92));
+  border:1px solid rgba(99,102,241,.12);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);
+  backdrop-filter:saturate(150%) blur(6px);transition:.25s}
+.card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(31,41,55,.10);border-color:var(--ring)}
+.icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:8px;color:#fff}
+.temp{background:linear-gradient(135deg,var(--accent2),#a7f3d0)}
+.hum{ background:linear-gradient(135deg,#6ee7b7,var(--accent))}
+.lux{ background:linear-gradient(135deg,#facc15,var(--accent2))}
+.soil{background:linear-gradient(135deg,#22d3ee,var(--accent3))}
+.ds { background:linear-gradient(135deg,var(--accent3),var(--accent))}
+.label{font-size:13px;color:var(--muted)}
+.value{display:flex;align-items:baseline;gap:6px;margin-top:4px}
+.num{font-size:34px;font-weight:700} .unit{font-size:14px;color:var(--muted)}
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
+.chip{display:inline-flex;gap:8px;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #e5e7eb;color:#64748b;box-shadow:var(--shadow);font-size:12px;margin-top:8px}
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">FM</div>
+    <div>
+      <h1>FM Farm Dashboard</h1>
+      <div class="subtitle">DHT22 • BH1750 • SoilMC(ADC) • DS18B20</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="icon temp">T</div>
+      <div class="label">Temperature (DHT)</div>
+      <div class="value"><div id="t_dht" class="num">-</div><div class="unit">°C</div></div>
+      <div class="chip">Air</div>
+    </section>
+
+    <section class="card">
+      <div class="icon hum">H</div>
+      <div class="label">Humidity</div>
+      <div class="value"><div id="rh_dht" class="num">-</div><div class="unit">%</div></div>
+      <div class="chip">Relative</div>
+    </section>
+
+    <section class="card">
+      <div class="icon lux">L</div>
+      <div class="label">Light (BH1750)</div>
+      <div class="value"><div id="lux" class="num">-</div><div class="unit">lx</div></div>
+      <div class="chip">CONT_HIRES_1</div>
+    </section>
+
+    <section class="card">
+      <div class="icon soil">S</div>
+      <div class="label">Soil Moisture</div>
+      <div class="value"><div id="soil_pct" class="num">-</div><div class="unit">%</div></div>
+      <div class="small">raw: <span id="soil_raw">-</span></div>
+      <div class="chip">ADC</div>
+    </section>
+
+    <section class="card">
+      <div class="icon ds">DS</div>
+      <div class="label">Temperature (DS18B20)</div>
+      <div class="value"><div id="ds_avg" class="num">-</div><div class="unit">°C</div></div>
+      <div class="small">probes: <span id="ds_list">[]</span></div>
+    </section>
+  </div>
+
+  <footer>Updated: <span id="ts">-</span></footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function show(v, digits=2){ if(v===null||v===undefined) return '-'; if(typeof v==='number') return v.toFixed(digits); return v; }
+
+async function refresh(){
+  try{
+    const r = await fetch('/api/json', {cache:'no-store'});
+    const j = await r.json();
+    $('t_dht').textContent  = show(j.dht_temp_c);
+    $('rh_dht').textContent = show(j.dht_rh);
+    $('lux').textContent    = show(j.lux, 0);
+    $('soil_pct').textContent = show(j.soil_pct, 0);
+    $('soil_raw').textContent = show(j.soil_raw, 0);
+    $('ds_avg').textContent = show(j.ds18b20_t_avg);
+    $('ds_list').textContent = Array.isArray(j.ds18b20_temps) ? j.ds18b20_temps.join(', ') : '[]';
+    $('ts').textContent = j.ts || '-';
+  }catch(e){
+    console.log('fetch error', e);
+  }
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>
